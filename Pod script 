@@ -1,0 +1,108 @@
+Here's a Python script that uses the Kubernetes Python client (`kubernetes` package) to create a pod from any Docker image shared by the user. It includes conditions to spin up or spin down the pod and options to create the pod within a deployment, stateful set, or replica set:
+
+```python
+from kubernetes import client, config
+
+def create_pod(image, pod_name, namespace='default'):
+    config.load_kube_config()  # Load kubeconfig file from default location
+    
+    api_instance = client.CoreV1Api()
+
+    container = client.V1Container(
+        name="container",
+        image=image
+    )
+
+    spec = client.V1PodSpec(
+        containers=[container]
+    )
+
+    pod_template = client.V1PodTemplateSpec(
+        metadata=client.V1ObjectMeta(name=pod_name),
+        spec=spec
+    )
+
+    if create_option == "deployment":
+        deployment = client.V1Deployment(
+            api_version="apps/v1",
+            kind="Deployment",
+            metadata=client.V1ObjectMeta(name=pod_name),
+            spec=client.V1DeploymentSpec(
+                replicas=1,
+                selector=client.V1LabelSelector(match_labels={"app": pod_name}),
+                template=pod_template
+            )
+        )
+        api_instance.create_namespaced_deployment(namespace, deployment)
+        print(f"Deployment '{pod_name}' created successfully.")
+
+    elif create_option == "statefulset":
+        statefulset = client.V1StatefulSet(
+            api_version="apps/v1",
+            kind="StatefulSet",
+            metadata=client.V1ObjectMeta(name=pod_name),
+            spec=client.V1StatefulSetSpec(
+                replicas=1,
+                selector=client.V1LabelSelector(match_labels={"app": pod_name}),
+                template=pod_template
+            )
+        )
+        api_instance.create_namespaced_stateful_set(namespace, statefulset)
+        print(f"StatefulSet '{pod_name}' created successfully.")
+
+    elif create_option == "replicaset":
+        replicaset = client.V1ReplicaSet(
+            api_version="apps/v1",
+            kind="ReplicaSet",
+            metadata=client.V1ObjectMeta(name=pod_name),
+            spec=client.V1ReplicaSetSpec(
+                replicas=1,
+                selector=client.V1LabelSelector(match_labels={"app": pod_name}),
+                template=pod_template
+            )
+        )
+        api_instance.create_namespaced_replica_set(namespace, replicaset)
+        print(f"ReplicaSet '{pod_name}' created successfully.")
+
+    else:
+        print("Invalid option. Please choose 'deployment', 'statefulset', or 'replicaset'.")
+
+def delete_pod(pod_name, namespace='default'):
+    config.load_kube_config()  # Load kubeconfig file from default location
+    
+    api_instance = client.CoreV1Api()
+
+    try:
+        api_instance.delete_namespaced_deployment(pod_name, namespace)
+        print(f"Deployment '{pod_name}' deleted successfully.")
+    except Exception as e:
+        print(f"Error deleting deployment: {e}")
+
+    try:
+        api_instance.delete_namespaced_stateful_set(pod_name, namespace)
+        print(f"StatefulSet '{pod_name}' deleted successfully.")
+    except Exception as e:
+        print(f"Error deleting statefulset: {e}")
+
+    try:
+        api_instance.delete_namespaced_replica_set(pod_name, namespace)
+        print(f"ReplicaSet '{pod_name}' deleted successfully.")
+    except Exception as e:
+        print(f"Error deleting replicaset: {e}")
+
+if __name__ == "__main__":
+    image = input("Enter Docker image name: ")
+    pod_name = input("Enter pod name: ")
+    create_option = input("Enter 'deployment', 'statefulset', or 'replicaset': ").lower()
+
+    action = input("Enter 'spin up' or 'spin down': ").lower()
+
+    if action == "spin up":
+        create_pod(image, pod_name)
+    elif action == "spin down":
+        delete_pod(pod_name)
+    else:
+        print("Invalid action. Please choose 'spin up' or 'spin down'.")
+```
+
+Make sure you have the `kubernetes` package installed (`pip install kubernetes`) and your Kubernetes cluster configured properly. This script allows the user to specify the Docker image, pod name, creation option (deployment, stateful set, or replica set), and whether to spin up or spin down the pod.
